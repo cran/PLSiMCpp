@@ -1,0 +1,19 @@
+Package: PLSiMCpp
+Type: Package
+Title: Methods for Partial Linear Single Index Model
+Version: 1.0
+Date: 2021-12-18
+Author: Shunyao Wu, Qi Zhang, Zhiruo Li, Hua Liang
+Maintainer: Shunyao Wu <wushunyao@qdu.edu.cn>
+Description: Estimation, hypothesis tests, and variable selection in partially linear single-index models. Please see H. (2010) at <doi:10.1214/10-AOS835> for more details.
+Encoding: UTF-8
+LazyData: false
+RoxygenNote: 7.1.2
+License: GPL (>= 2)
+Imports: Rcpp (>= 0.12.11), crayon, methods, stats
+LinkingTo: Rcpp,RcppArmadillo
+Suggests: knitr, rmarkdown
+NeedsCompilation: yes
+Packaged: 2021-12-19 02:57:07 UTC; hp
+Repository: CRAN
+Date/Publication: 2021-12-20 10:02:03 UTC

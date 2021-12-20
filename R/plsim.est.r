@@ -1,0 +1,321 @@
+
+#' @name plsim.est
+#' @aliases plsim.est
+#' @aliases plsim.est.formula
+#' @aliases plsim.est.default
+#'
+#' @title Profile Least Squares Estimator
+#' @description PLS was proposed by Liang \emph{et al.} (2010) 
+#' to estimate parameters in PLSiM
+#' \deqn{Y = \eta(Z^T\alpha) + X^T\beta + \epsilon.}
+#' 
+#' @usage plsim.est(\dots)
+#' 
+#' \method{plsim.est}{formula}(formula, data, \dots)
+#' 
+#' \method{plsim.est}{default}(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, MaxStep = 200L,
+#' ParmaSelMethod="SimpleValidation", TestRatio=0.1, K = 3, seed=0, verbose=TRUE, \dots)
+#' 
+#' @param formula a symbolic description of the model to be fitted.
+#' @param data an optional data frame, list or environment containing the variables in the model.
+#' @param xdat input matrix (linear covariates). The model reduces to a single index model when \code{x} is NULL.
+#' @param zdat input matrix (nonlinear covariates). \code{z} should not be NULL.
+#' @param ydat input vector (response variable).
+#' @param h a value or a vector for bandwidth. If \code{h} is NULL, a default vector c(0.01,0.02,0.05,0.1,0.5)
+#' will be set for it. \link{plsim.bw} is employed to select the optimal bandwidth when h is a vector or NULL.
+#' @param zetaini initial coefficients, optional (default: NULL). It could be obtained by the function \code{\link{plsim.ini}}.
+#' \code{zetaini[1:ncol(z)]} is the initial coefficient vector \eqn{\boldmath{\alpha}_0},
+#' and \code{zetaini[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\boldmath{\beta}_0}.
+#' @param MaxStep the maximum iterations, optional (default=200).
+#' @param ParmaSelMethod the parameter for the function \link{plsim.bw}.
+#' @param TestRatio the parameter for the function \link{plsim.bw}.
+#' @param K the parameter for the function \link{plsim.bw}.
+#' @param seed int, default: 0.
+#' @param verbose bool, default: TRUE. Enable verbose output.
+#' @param \dots additional arguments.
+#'
+#' @return
+#' \item{eta}{estimated non-parametric part \eqn{\hat{\eta}(Z^T\boldmath{\hat{\alpha} })}.}
+#' \item{zeta}{estimated coefficients. \code{zeta[1:ncol(z)]} is \eqn{\hat{\alpha}}, 
+#' and \code{zeta[(ncol(z)+1):(ncol(z)+ncol(x))]} is \eqn{\hat{\beta}}.}
+#' \item{y_hat}{ \code{y}'s estimates.}
+#' \item{mse}{mean squared errors between y and \code{y_hat}.}
+#' \item{data}{data information including \code{x}, \code{z}, \code{y}, bandwidth \code{h}, 
+#' initial coefficients \code{zetaini}, iteration step \code{MaxStep} and flag \code{SiMflag}. 
+#' \code{SiMflag} is TRUE when \code{x} is NULL, otherwise \code{SiMflag} is FALSE.}
+#' \item{Z_alpha}{\eqn{Z^T\boldmath{\hat{\alpha}}}.}
+#' \item{r_square}{multiple correlation coefficient.}
+#' \item{variance}{variance of \code{y_hat}.}
+#' \item{stdzeta}{standard error of \code{zeta}.}
+#'
+#' @export
+#'
+#' @examples
+#' 
+#' # EXAMPLE 1 (INTERFACE=FORMULA)
+#' # To estimate parameters of partially linear single-index model (PLSiM). 
+#' 
+#' n = 50
+#' sigma = 0.1
+#'
+#' alpha = matrix(1,2,1)
+#' alpha = alpha/norm(alpha,"2")
+#'
+#' beta = matrix(4,1,1)
+#' 
+#' # Case 1: Matrix Input
+#' x = matrix(1,n,1)
+#' z = matrix(runif(n*2),n,2)
+#' y = 4*((z%*%alpha-1/sqrt(2))^2) + x%*%beta + sigma*matrix(rnorm(n),n,1)
+#'
+#' fit = plsim.est(y~x|z)
+#' summary(fit)
+#' 
+#' # Case 2: Vector Input
+#' x = rep(1,n)
+#' z1 = runif(n)
+#' z2 = runif(n) 
+#' y = 4*((z%*%alpha-1/sqrt(2))^2) + x%*%beta + sigma*matrix(rnorm(n),n,1)
+#' 
+#' fit = plsim.est(y~x|z1+z2)
+#' summary(fit)
+#' 
+#' # EXAMPLE 2 (INTERFACE=DATA FRAME) 
+#' # To estimate parameters of partially linear single-index model (PLSiM).  
+#' 
+#' n = 50
+#' sigma = 0.1
+#'
+#' alpha = matrix(1,2,1)
+#' alpha = alpha/norm(alpha,"2")
+#'
+#' beta = matrix(4,1,1)
+#' 
+#' x = rep(1,n)
+#' z1 = runif(n)
+#' z2 = runif(n) 
+#' X = data.frame(x)
+#' Z = data.frame(z1,z2)
+#' 
+#' x = data.matrix(X)
+#' z = data.matrix(Z)
+#' y = 4*((z%*%alpha-1/sqrt(2))^2) + x%*%beta + sigma*matrix(rnorm(n),n,1)
+#' 
+#' fit = plsim.est(xdat=X,zdat=Z,ydat=y)
+#' summary(fit)
+#' 
+#' @references
+#'
+#' H. Liang, X. Liu, R. Li, C. L. Tsai. \emph{Estimation and testing for partially linear single-index models}.
+#' Annals of statistics, 2010, 38(6): 3811.
+
+
+plsim.est = function(...)
+{
+  args = list(...)
+  if (is(args[[1]],"formula"))
+    UseMethod("plsim.est",args[[1]])
+  else
+    UseMethod("plsim.est")
+}
+
+plsim.est.formula = function(formula,data,...)
+{
+  mf = match.call(expand.dots = FALSE)   
+  m = match(c("formula","data"),
+            names(mf), nomatch = 0) 
+  mf = mf[c(1,m)]
+  
+  mf.xf = mf
+  
+  mf[[1]] = as.name("model.frame")
+  mf.xf[[1]] = as.name("model.frame")
+  
+  chromoly = deal_formula(mf[["formula"]])
+  
+  if (length(chromoly) != 3)
+    stop("invoked with improper formula, please see plsim.est documentation for proper use")
+  
+  bronze = lapply(chromoly, paste, collapse = " + ")
+  
+  mf.xf[["formula"]] = as.formula(paste(" ~ ", bronze[[2]]),
+                                  env = environment(formula))
+  
+  mf[["formula"]] = as.formula(paste(bronze[[1]]," ~ ", bronze[[3]]),
+                               env = environment(formula))
+  
+  formula.all = terms(as.formula(paste(" ~ ",bronze[[1]]," + ",bronze[[2]], " + ",bronze[[3]]),
+                                 env = environment(formula)))
+  
+  orig.class = if (missing(data))
+    sapply(eval(attr(formula.all, "variables"), environment(formula.all)),class)
+  else sapply(eval(attr(formula.all, "variables"), data, environment(formula.all)),class)
+  
+  arguments.mfx = chromoly[[2]]
+  arguments.mf = c(chromoly[[1]],chromoly[[3]])
+  
+  
+  mf[["formula"]] = terms(mf[["formula"]])
+  mf.xf[["formula"]] = terms(mf.xf[["formula"]])
+  
+  if(all(orig.class == "ts")){
+    arguments = (as.list(attr(formula.all, "variables"))[-1])
+    attr(mf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mf,arguments)),drop = FALSE])
+    attr(mf.xf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mfx,arguments)),drop = FALSE])
+  }else if(any(orig.class == "ts")){
+    arguments = (as.list(attr(formula.all, "variables"))[-1])
+    arguments.normal = arguments[which(orig.class != "ts")]
+    arguments.timeseries = arguments[which(orig.class == "ts")]
+    
+    ix = sort(c(which(orig.class == "ts"),which(orig.class != "ts")),index.return = TRUE)$ix
+    attr(mf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mf,arguments)),drop = FALSE])
+    attr(mf.xf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mfx,arguments)),drop = FALSE])
+  }
+  
+  
+  mf = tryCatch({
+    eval(mf,parent.frame())
+  },error = function(e){
+    NULL
+  })
+  
+  mf.xf = tryCatch({
+    eval(mf.xf,parent.frame())
+  },error = function(e){
+    NULL
+  })
+  
+  if(is.null(mf)){
+    cat( blue$bold("\n Z (")
+         %+% black$bold("z")
+         %+% blue$bold(") should not be NULL.\n")
+         %+% blue$bold(" If Z is null, please utilize linear models, such as ")
+         %+% black$bold("lm() ")
+         %+% blue$bold("function. \n\n")
+    )
+    return(NULL)
+  }
+  else{
+    ydat = model.response(mf)
+  }
+  
+  xdat = mf.xf
+  zdat = mf[, chromoly[[3]], drop = FALSE]
+  
+  ydat = data.matrix(ydat)
+  
+  if(!is.null(xdat) & is.null(dim(xdat[,1]))){
+    xdat = data.matrix(xdat)
+  }
+  else if(!is.null(dim(xdat[,1]))){
+    xdat = xdat[,1]
+  }
+  
+  if(is.null(dim(zdat[,1]))){
+    zdat = data.matrix(zdat)
+  }
+  else{
+    zdat = zdat[,1]
+  }
+  
+  
+  fit = plsim.est(xdat = xdat, zdat = zdat, ydat = ydat, ...)
+  
+  return(fit)
+}
+
+plsim.est.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, MaxStep = 200L,
+                            ParmaSelMethod="SimpleValidation",TestRatio=0.1,K = 3,
+                            seed=0,verbose=TRUE,...)
+{
+  
+  
+  data = list(x=xdat,y=ydat,z=zdat)
+  x = data$x
+  y = data$y
+  z = data$z
+  
+  if ( is.null( .assertion_for_variables(data)) ) return(NULL)
+  
+  if(is.data.frame(x))
+    x = data.matrix(x)
+  
+  if(is.data.frame(z))
+    z = data.matrix(z)
+  
+  if(is.data.frame(y))
+    y = data.matrix(y)
+  
+  if(is.null(zetaini))
+  {
+    zetaini = plsim.ini(x,z,y,verbose=verbose)
+  }
+  
+  if(is.null(x))
+  {
+    #x = matrix()
+    flag = 0
+    
+    if(length(zetaini) > ncol(z))
+    {
+      zetaini = zetaini[1:ncol(z)]
+    }
+  }
+  else
+  {
+    flag = 1
+  }
+  
+  
+  if( is.vector(h) & length(h) > 1  )
+  {
+    hVec = h
+    
+    res_plsimest_simple = plsim.bw(x,z,y,bandwidthList=hVec,
+                                        TargetMethod="plsimest",zeta_i=zetaini,
+                                        ParmaSelMethod=ParmaSelMethod,TestRatio=TestRatio,
+                                        K=K,seed=seed,verbose=verbose)
+    h = res_plsimest_simple$bandwidthBest       
+  }
+  else if(is.null(h))
+  {
+    #hVec = c(0.01,0.02,0.05,0.1,0.5)
+    
+    res_plsimest_simple = plsim.bw(x,z,y,
+                                        TargetMethod="plsimest",zeta_i=zetaini,
+                                        ParmaSelMethod=ParmaSelMethod,TestRatio=TestRatio,
+                                        K=K,seed=seed,verbose=verbose)
+    h = res_plsimest_simple$bandwidthBest    
+  }
+  
+  
+  
+  
+  if(is.null(x))
+  {
+    x_tmp = matrix()
+    res = .plsimestCore(x_tmp, y, z, h, zetaini, MaxStep,flag)
+  }
+  else
+  {
+    res = .plsimestCore(x, y, z, h, zetaini, MaxStep,flag)
+  }
+  
+  #res = list(x=x,y=y,z=z,h=h,zetaini=zetaini,MaxStep=MaxStep,flag=flag)
+  
+  data = list(x=x,y=y,z=z,h=h,
+              zetaini=zetaini,MaxStep=MaxStep,
+              SiMflag = !as.logical(flag))
+  
+  y_hat = res$y_hat
+  
+  fit = list(zeta=res$zeta,data=data,eta=res$eta,
+             Z_alpha=z%*%matrix(res$zeta[1:ncol(z)]),
+             r_square=.r_square(y,y_hat),mse=res$mse,
+             variance=res$variance,stdzeta=res$stdzeta,
+             y_hat=y_hat)
+  
+  class(fit) = "pls"
+  
+  return(fit)
+}

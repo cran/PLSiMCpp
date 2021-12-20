@@ -1,0 +1,32 @@
+useDynLib(PLSiMCpp, .registration=TRUE)
+exportPattern("^[[:alpha:]]+")
+importFrom(Rcpp, evalCpp)
+import(crayon)
+importFrom("methods", "is")
+importFrom("stats", "as.formula", "model.response", "pchisq", "terms", "var")
+
+S3method(summary,pls)
+
+S3method(plsim.MAVE,formula)
+S3method(plsim.MAVE,default)
+
+S3method(plsim.bw,formula)
+S3method(plsim.bw,default)
+
+S3method(plsim.ini,formula)
+S3method(plsim.ini,default)
+
+S3method(plsim.lam,formula)
+S3method(plsim.lam,default)
+
+S3method(plsim.vs.soft,formula)
+S3method(plsim.vs.soft,default)
+
+S3method(plsim.est,formula)
+S3method(plsim.est,default)
+
+S3method(plsim.vs.hard,formula)
+S3method(plsim.vs.hard,default)
+
+S3method(varSelCore,PPLSE)
+S3method(varSelCore,StepWise)
