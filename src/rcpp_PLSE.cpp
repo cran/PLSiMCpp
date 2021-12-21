@@ -148,13 +148,13 @@ List lasso(arma::mat x, arma::mat y, double lambda, bool verbose = 1, int MaxSte
 {
   //if(verbose)
   //  cout<<"Adopt LASSO pentaly function"<<endl;
-  int x_h = det(x.t()*x);
+  int n_col = x.n_cols;
+  int zh = arma::rank(x.t()*x);
+  
   List res;
   
-  //cout<<x.t()*x<<endl;
-  
-  if(x_h==0){
-    res["error"]=1;
+  if(n_col!=zh){
+    res["error"] = 1;
     return(res);
   }
   
@@ -244,13 +244,13 @@ List scad(arma::mat x, arma::mat y, double lambda, bool verbose = 1, int MaxStep
   
   
   double a = 3.7;
-  int x_h = det(x.t()*x);
+  int n_col = x.n_cols;
+  int zh = arma::rank(x.t()*x);
+  
   List res;
   
-  //cout<<x.t()*x<<endl;
-  
-  if(x_h==0){
-    res["error"]=1;
+  if(n_col!=zh){
+    res["error"] = 1;
     return(res);
   }
   
@@ -340,13 +340,13 @@ List elasticNet(arma::mat x, arma::mat y, double lambda, double l1_ratio, bool v
   //if(verbose)
   //  cout<<"Adopt Elastic Net pentaly function"<<endl;
   
-  int x_h = det(x.t()*x);
+  int n_col = x.n_cols;
+  int zh = arma::rank(x.t()*x);
+  
   List res;
   
-  //cout<<x.t()*x<<endl;
-  
-  if(x_h==0){
-    res["error"]=1;
+  if(n_col!=zh){
+    res["error"] = 1;
     return(res);
   }
   

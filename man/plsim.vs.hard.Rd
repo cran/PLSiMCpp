@@ -71,7 +71,7 @@ Least Squares Estimator, while AIC and BIC are implemented with Stepwise Regress
 
 # EXAMPLE 1 (INTERFACE=FORMULA)
 # To select variables with Penalized Profile Least Squares Estimation based on 
-# the penalty SCAD.
+# the penalty LASSO.
 
 n = 50
 dx = 10
@@ -93,7 +93,7 @@ res_varSel_LASSO = plsim.vs.hard(y~x|z,h=0.1,Method="LASSO")
 
 # EXAMPLE 2 (INTERFACE=DATA FRAME)
 # To select variables with Penalized Profile Least Squares Estimation based on 
-# the penalty SCAD.
+# the penalty LASSO.
 
 n = 50
 dx = 10

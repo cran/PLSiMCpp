@@ -56,7 +56,7 @@
 #'
 #' # EXAMPLE 1 (INTERFACE=FORMULA)
 #' # To select variables with Penalized Profile Least Squares Estimation based on 
-#' # the penalty SCAD.
+#' # the penalty LASSO.
 #' 
 #' n = 50
 #' dx = 10
@@ -78,7 +78,7 @@
 #'
 #' # EXAMPLE 2 (INTERFACE=DATA FRAME)
 #' # To select variables with Penalized Profile Least Squares Estimation based on 
-#' # the penalty SCAD.
+#' # the penalty LASSO.
 #' 
 #' n = 50
 #' dx = 10

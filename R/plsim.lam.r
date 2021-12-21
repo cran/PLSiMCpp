@@ -73,7 +73,7 @@
 #' @examples
 #'
 #' # EXAMPLE 1 (INTERFACE=FORMULA)
-#' # To select the regularization parameters based on AIC and BIC.
+#' # To select the regularization parameters based on AIC.
 #' 
 #' n = 50
 #' sigma = 0.1
@@ -89,16 +89,13 @@
 #'
 #' fit_plsimest = plsim.est(y~x|z)
 #' 
-#' # Select the regularization parameters by BIC
-#' res = plsim.lam(y~x|z,h=fit_plsimest$data$h,zetaini = fit_plsimest$zeta)
-#' 
 #' # Select the regularization parameters by AIC
 #' res = plsim.lam(y~x|z,h=fit_plsimest$data$h,zetaini = fit_plsimest$zeta,
 #'              lambda_selector='AIC')
 #' 
 #' 
 #' # EXAMPLE 2 (INTERFACE=DATA FRAME)
-#' # To select the regularization parameters based on AIC and BIC.
+#' # To select the regularization parameters based on AIC.
 #' 
 #' n = 50
 #' sigma = 0.1
@@ -118,9 +115,6 @@
 #' y = 4*((z%*%alpha-1/sqrt(2))^2) + x%*%beta + sigma*matrix(rnorm(n),n,1)
 #'
 #' fit_plsimest = plsim.est(xdat=X,zdat=Z,ydat=y)
-#' 
-#' # Select the regularization parameters by BIC
-#' res2 = plsim.lam(xdat=X,ydat=y,zdat=Z,h=fit_plsimest$data$h,zetaini = fit_plsimest$zeta)
 #' 
 #' # Select the regularization parameters by AIC
 #' res2 = plsim.lam(xdat=X,ydat=y,zdat=Z,h=fit_plsimest$data$h,
