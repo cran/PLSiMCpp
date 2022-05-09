@@ -23,6 +23,8 @@
 }
 
 
+
+
 #' @name plsim.lam
 #' @aliases plsim.lam
 #' @aliases plsim.lam.formula
@@ -127,10 +129,6 @@
 #'
 plsim.lam = function(...)
 {
-  args = list(...)
-  if (is(args[[1]],"formula"))
-    UseMethod("plsim.lam",args[[1]])
-  else
     UseMethod("plsim.lam")
 }
 
@@ -140,7 +138,6 @@ plsim.lam.formula = function(formula,data,...)
   m = match(c("formula","data"),
             names(mf), nomatch = 0) 
   mf = mf[c(1,m)]
-  
   mf.xf = mf
   
   mf[[1]] = as.name("model.frame")
@@ -149,7 +146,7 @@ plsim.lam.formula = function(formula,data,...)
   chromoly = deal_formula(mf[["formula"]])
   
   if (length(chromoly) != 3)
-    stop("invoked with improper formula, please see plsim.lam documentation for proper use")
+    stop("Invoked with improper formula, please see plsim.est documentation for proper use")
   
   bronze = lapply(chromoly, paste, collapse = " + ")
   
@@ -158,6 +155,7 @@ plsim.lam.formula = function(formula,data,...)
   
   mf[["formula"]] = as.formula(paste(bronze[[1]]," ~ ", bronze[[3]]),
                                env = environment(formula))
+  
   
   formula.all = terms(as.formula(paste(" ~ ",bronze[[1]]," + ",bronze[[2]], " + ",bronze[[3]]),
                                  env = environment(formula)))
@@ -169,24 +167,8 @@ plsim.lam.formula = function(formula,data,...)
   arguments.mfx = chromoly[[2]]
   arguments.mf = c(chromoly[[1]],chromoly[[3]])
   
-  
   mf[["formula"]] = terms(mf[["formula"]])
   mf.xf[["formula"]] = terms(mf.xf[["formula"]])
-  
-  if(all(orig.class == "ts")){
-    arguments = (as.list(attr(formula.all, "variables"))[-1])
-    attr(mf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mf,arguments)),drop = FALSE])
-    attr(mf.xf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mfx,arguments)),drop = FALSE])
-  }else if(any(orig.class == "ts")){
-    arguments = (as.list(attr(formula.all, "variables"))[-1])
-    arguments.normal = arguments[which(orig.class != "ts")]
-    arguments.timeseries = arguments[which(orig.class == "ts")]
-    
-    ix = sort(c(which(orig.class == "ts"),which(orig.class != "ts")),index.return = TRUE)$ix
-    attr(mf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mf,arguments)),drop = FALSE])
-    attr(mf.xf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mfx,arguments)),drop = FALSE])
-  }
-  
   
   mf = tryCatch({
     eval(mf,parent.frame())
@@ -194,27 +176,34 @@ plsim.lam.formula = function(formula,data,...)
     NULL
   })
   
+  temp = map_lgl(mf , ~is.factor(.x))
+  if(sum(temp)>0){
+    stop("Categorical variables are not allowed in Z or Y")
+  }
+  
   mf.xf = tryCatch({
     eval(mf.xf,parent.frame())
   },error = function(e){
     NULL
   })
   
+  mt <- attr(mf.xf, "terms")
+  
   if(is.null(mf)){
-    cat( blue$bold("\n Z (")
-         %+% black$bold("z")
-         %+% blue$bold(") should not be NULL.\n")
-         %+% blue$bold(" If Z is null, please utilize linear models, such as ")
-         %+% black$bold("lm() ")
-         %+% blue$bold("function. \n\n")
-    )
-    return(NULL)
+    stop("Z should not be NULL")
   }
   else{
     ydat = model.response(mf)
   }
   
-  xdat = mf.xf
+  if(!is.null(mf.xf))
+  {
+    xdat = model.matrix(mt, mf.xf, NULL)
+    xdat = as.matrix(xdat[,2:dim(xdat)[2]])
+  }else{
+    xdat = mf.xf
+  }
+  
   zdat = mf[, chromoly[[3]], drop = FALSE]
   
   ydat = data.matrix(ydat)
@@ -247,7 +236,19 @@ plsim.lam.default = function(xdat=NULL,ydat,zdat,h,zetaini=NULL,penalty="SCAD",l
   y = data$y
   z = data$z
   
-  if ( is.null( .assertion_for_variables(data)) ) return(NULL)
+  .assertion_for_variables(data)
+  
+  tempz = map_lgl(z , ~is.factor(.x))
+  tempy = map_lgl(y , ~is.factor(.x))
+  if((sum(tempz)>0)|(sum(tempy)>0)){
+    stop("Categorical variables are not allowed in Z or Y")
+  }
+  
+  if(!is.null(x)){
+    x = model.matrix(~., as.data.frame(x))
+    x = as.matrix(x[,2:dim(x)[2]])
+  }
+  
   
   if(is.data.frame(x))
     x = data.matrix(x)
@@ -265,9 +266,7 @@ plsim.lam.default = function(xdat=NULL,ydat,zdat,h,zetaini=NULL,penalty="SCAD",l
   
   if(is.null(h))
   {
-    cat("Please input a value for the bandwidth (h).")
-    
-    return(NULL)
+    stop("Please input a value for the bandwidth (h)")
   }
   
   n = nrow(y)
@@ -350,9 +349,9 @@ plsim.lam.default = function(xdat=NULL,ydat,zdat,h,zetaini=NULL,penalty="SCAD",l
       
       if(verbose)
       {
-        cat(paste(black$bold("\n lambda"),lambdaList[k],sep = "="))
+        cat(paste("\n lambda",lambdaList[k],sep = "="))
         cat("\n ")
-        cat(paste(black$bold(lambda_selector),goodness[k],sep = "="))
+        cat(paste(lambda_selector,goodness[k],sep = "="))
         cat("\n\n")
       }
     }
@@ -362,8 +361,6 @@ plsim.lam.default = function(xdat=NULL,ydat,zdat,h,zetaini=NULL,penalty="SCAD",l
     lambda_best = lambdaList[index_selectorMin]
     
     result = list()
-    #result$Method = Method
-    #result$lambda_selector = lambda_selector
     result$goodness_best = goodness_min
     result$lambda_best = lambda_best
     result$lambdaList = lambdaList
@@ -373,12 +370,8 @@ plsim.lam.default = function(xdat=NULL,ydat,zdat,h,zetaini=NULL,penalty="SCAD",l
   {
     goodness = matrix(0,length(lambdaList),length(l1_ratio_List))
     
-    cat(paste( cat(blue$bold("\n Select ")
-                   %+%black$bold("lambda")
-                   %+% blue$bold(" and ")
-                   %+%black$bold("l1_ratio")
-                   %+%blue$bold(" for penalized plsim according to")),
-               black$bold(lambda_selector), sep = " "))
+    cat(paste("\n Select lambda and l1_ratio for penalized plsim according to",
+               lambda_selector, sep = " "))
     cat("\n")
     
     for(k in 1:length(lambdaList))
@@ -397,10 +390,10 @@ plsim.lam.default = function(xdat=NULL,ydat,zdat,h,zetaini=NULL,penalty="SCAD",l
         
         if(verbose)
         {
-          cat(paste(black$bold("\n lambda"),lambdaList[k],sep = "="))
-          cat(paste(black$bold("\n l1_ratio"),l1_ratio_List[t],sep = "="))
+          cat(paste("\n lambda",lambdaList[k],sep = "="))
+          cat(paste("\n l1_ratio",l1_ratio_List[t],sep = "="))
           cat("\n ")
-          cat(paste(black$bold(lambda_selector),goodness[k,t],sep = "="))
+          cat(paste(lambda_selector,goodness[k,t],sep = "="))
           cat("\n\n")
         }
       }
@@ -412,8 +405,6 @@ plsim.lam.default = function(xdat=NULL,ydat,zdat,h,zetaini=NULL,penalty="SCAD",l
     l1_ratio_best = l1_ratio_List[index_selectorMin[2]]
     
     result = list()
-    #result$Method = Method
-    #result$lambda_selector = lambda_selector
     result$goodness_best = goodness_min
     result$lambda_best = lambda_best
     result$l1_ratio_best = l1_ratio_best

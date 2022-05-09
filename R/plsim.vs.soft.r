@@ -1,4 +1,5 @@
 
+
 #' @name plsim.vs.soft
 #' @aliases plsim.vs.soft
 #' @aliases plsim.vs.soft.formula
@@ -144,13 +145,8 @@
 #' H. Liang, X. Liu, R. Li, C. L. Tsai. \emph{Estimation and testing for partially linear single-index models}.
 #' Annals of statistics, 2010, 38(6): 3811.
 #' 
-#' 
 plsim.vs.soft = function(...)
 {
-  args = list(...)
-  if (is(args[[1]],"formula"))
-    UseMethod("plsim.vs.soft",args[[1]])
-  else
     UseMethod("plsim.vs.soft")
 }
 
@@ -168,7 +164,7 @@ plsim.vs.soft.formula = function(formula,data,...)
   chromoly = deal_formula(mf[["formula"]])
   
   if (length(chromoly) != 3)
-    stop("invoked with improper formula, please see plsim.vs.soft documentation for proper use")
+    stop("Invoked with improper formula, please see plsim.est documentation for proper use")
   
   bronze = lapply(chromoly, paste, collapse = " + ")
   
@@ -177,6 +173,7 @@ plsim.vs.soft.formula = function(formula,data,...)
   
   mf[["formula"]] = as.formula(paste(bronze[[1]]," ~ ", bronze[[3]]),
                                env = environment(formula))
+  
   
   formula.all = terms(as.formula(paste(" ~ ",bronze[[1]]," + ",bronze[[2]], " + ",bronze[[3]]),
                                  env = environment(formula)))
@@ -188,24 +185,8 @@ plsim.vs.soft.formula = function(formula,data,...)
   arguments.mfx = chromoly[[2]]
   arguments.mf = c(chromoly[[1]],chromoly[[3]])
   
-  
   mf[["formula"]] = terms(mf[["formula"]])
   mf.xf[["formula"]] = terms(mf.xf[["formula"]])
-  
-  if(all(orig.class == "ts")){
-    arguments = (as.list(attr(formula.all, "variables"))[-1])
-    attr(mf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mf,arguments)),drop = FALSE])
-    attr(mf.xf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mfx,arguments)),drop = FALSE])
-  }else if(any(orig.class == "ts")){
-    arguments = (as.list(attr(formula.all, "variables"))[-1])
-    arguments.normal = arguments[which(orig.class != "ts")]
-    arguments.timeseries = arguments[which(orig.class == "ts")]
-    
-    ix = sort(c(which(orig.class == "ts"),which(orig.class != "ts")),index.return = TRUE)$ix
-    attr(mf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mf,arguments)),drop = FALSE])
-    attr(mf.xf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mfx,arguments)),drop = FALSE])
-  }
-  
   
   mf = tryCatch({
     eval(mf,parent.frame())
@@ -213,6 +194,10 @@ plsim.vs.soft.formula = function(formula,data,...)
     NULL
   })
   
+  temp = map_lgl(mf , ~is.factor(.x))
+  if(sum(temp)>0){
+    stop("Categorical variables are not allowed in Z or Y")
+  }
   
   mf.xf = tryCatch({
     eval(mf.xf,parent.frame())
@@ -220,22 +205,23 @@ plsim.vs.soft.formula = function(formula,data,...)
     NULL
   })
   
+  mt <- attr(mf.xf, "terms")
   
   if(is.null(mf)){
-    cat( blue$bold("\n Z (")
-         %+% black$bold("z")
-         %+% blue$bold(") should not be NULL.\n")
-         %+% blue$bold(" If Z is null, please utilize linear models, such as ")
-         %+% black$bold("lm() ")
-         %+% blue$bold("function. \n\n")
-    )
-    return(NULL)
+    stop("Z should not be NULL")
   }
   else{
     ydat = model.response(mf)
   }
   
-  xdat = mf.xf
+  if(!is.null(mf.xf))
+  {
+    xdat = model.matrix(mt, mf.xf, NULL)
+    xdat = as.matrix(xdat[,2:dim(xdat)[2]])
+  }else{
+    xdat = mf.xf
+  }
+  
   zdat = mf[, chromoly[[3]], drop = FALSE]
   
   ydat = data.matrix(ydat)
@@ -265,9 +251,22 @@ plsim.vs.soft.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, la
                          penalty = "SCAD", verbose=TRUE,
                          ParmaSelMethod="SimpleValidation",TestRatio=0.1,K = 3,seed=0,...)
 {
+  data = list(x=xdat,y=ydat,z=zdat)
   x = xdat
   z = zdat
   y = ydat
+  .assertion_for_variables(data)
+  
+  tempz = map_lgl(z , ~is.factor(.x))
+  tempy = map_lgl(y , ~is.factor(.x))
+  if((sum(tempz)>0)|(sum(tempy)>0)){
+    stop("Categorical variables are not allowed in Z or Y")
+  }
+  
+  if(!is.null(x)){
+    x = model.matrix(~., as.data.frame(x))
+    x = as.matrix(x[,2:dim(x)[2]])
+  }
   
   if(is.data.frame(x))
     x = data.matrix(x)
@@ -285,15 +284,11 @@ plsim.vs.soft.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, la
   
   if(is.null(x))
   {
-    #x = matrix()
     SiMflag = 0
     
     if(length(zetaini) > ncol(z))
     {
-      cat( blue$bold("\n the dimension of ")
-           %+% black$bold("zetaini")
-           %+% blue$bold(" is not equal to that of covariates.\n\n") )
-      return(NULL)
+      stop("The dimension of zetaini is not equal to that of covariates")
     }
   }
   else
@@ -303,15 +298,12 @@ plsim.vs.soft.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, la
   
   if(verbose)
   {
-    cat( blue$bold("\n Adopt ")
-         %+% black$bold(penalty)
-         %+% blue$bold(" pentaly function\n\n") )
+    cat(paste("\n Adopt ",penalty," pentaly function\n\n",sep=""))
   }
   
   if(is.null(l1_ratio) & penalty == "ElasticNet")
   {
-    cat( black$bold("l1_ratio")
-         %+% blue$bold(" is set as 0.1 for ElasticNet for default.\n\n") )  
+    cat("l1_ratio is set as 0.1 for ElasticNet for default.\n\n")  
     l1_ratio = 0.1
   }
   else
@@ -336,8 +328,6 @@ plsim.vs.soft.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, la
   }
   else if(is.null(h))
   {
-    #hVec = c(0.01,0.02,0.05,0.1,0.5)
-    
     res_plsim_simple = plsim.bw(x,z,y,
                                      TargetMethod="plsim",zeta_i=zetaini,
                                      ParmaSelMethod=ParmaSelMethod,TestRatio=TestRatio,K=K,lambda=lambda,seed=seed)
@@ -362,10 +352,7 @@ plsim.vs.soft.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, la
   
   if(length(result)==1)
   {
-    cat( red$bold("\n Invoked with improper input, please see ")
-         %+% black$bold("plsim.vs.soft")
-         %+% red$bold(" documentation for proper use.\n\n") )
-    return(NULL)
+    stop("Invoked with improper input, please see plsim.vs.soft documentation for proper use")
   }
   
   data = list(x=x,y=y,z=z,h=h,lambda=lambda,l1_ratio=l1_ratio,

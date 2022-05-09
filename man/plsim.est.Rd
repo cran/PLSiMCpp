@@ -93,6 +93,7 @@ y = 4*((z\%*\%alpha-1/sqrt(2))^2) + x\%*\%beta + sigma*matrix(rnorm(n),n,1)
 
 fit = plsim.est(y~x|z1+z2)
 summary(fit)
+print(fit)
 
 # EXAMPLE 2 (INTERFACE=DATA FRAME) 
 # To estimate parameters of partially linear single-index model (PLSiM).  
@@ -117,6 +118,7 @@ y = 4*((z\%*\%alpha-1/sqrt(2))^2) + x\%*\%beta + sigma*matrix(rnorm(n),n,1)
 
 fit = plsim.est(xdat=X,zdat=Z,ydat=y)
 summary(fit)
+print(fit)
 
 }
 \references{

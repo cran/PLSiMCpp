@@ -4,17 +4,17 @@
 \alias{plsim.npTest}
 \title{Testing nonparametric component}
 \usage{
-plsim.npTest(fit, significant_level = 0.05)
+plsim.npTest(fit)
 }
 \arguments{
 \item{fit}{the result of function \link{plsim.est} or \link{plsim.vs.soft}.}
-
-\item{significant_level}{significant level for the test, default: 0.05.}
 }
 \value{
-\item{T2}{test statistic.}
-\item{pvalue}{p-value.}
-\item{\eqn{delta}}{ \eqn{delta=1} means to reject the hypothesis \eqn{H_0}, while \eqn{\delta=0} means to accept the hypothesis \eqn{H_0}. }
+A list with class "htest" containing the following components
+\item{statistic}{the value of the test statistic.}
+\item{p.value}{the p-value for the test}
+\item{method}{a character string indicating what type of test was performed}
+\item{data.name}{a character string giving the name of input}
 }
 \description{
 Study the hypothesis test:

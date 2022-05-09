@@ -4,10 +4,11 @@
 #' 
 #' @description Predict Y based on new observations.
 #' 
-#' 
+#' @param object fitted partially linear single-index model, which could be obtained by 
 #' @param x_test input matrix (linear covariates of test set).
 #' @param z_test input matrix (nonlinear covariates of test set).
-#' @param model fitted partially linear single-index model, which could be obtained by 
+#' @param \dots additional arguments.
+#' 
 #' \link{plsim.MAVE}, or \link{plsim.est}, or \link{plsim.vs.soft}. 
 #'
 #' @return
@@ -20,44 +21,43 @@
 #' n = 50
 #' sigma = 0.1
 #'
-#' alpha = matrix(1,2,1)
-#' alpha = alpha/norm(alpha,"2")
+#' alpha = matrix(1, 2, 1)
+#' alpha = alpha/norm(alpha, "2")
 #'
-#' beta = matrix(4,1,1)
+#' beta = matrix(4, 1, 1)
 #'
-#' x = matrix(1,n,1)
+#' x = matrix(1, n, 1)
 #' x_test = matrix(1,n,1)
 #'
-#' z = matrix(runif(n*2),n,2)
-#' z_test = matrix(runif(n*2),n,2)
+#' z = matrix(runif(n*2), n, 2)
+#' z_test = matrix(runif(n*2), n, 2)
 #'
 #' y = 4*((z%*%alpha-1/sqrt(2))^2) + x%*%beta + sigma*matrix(rnorm(n),n,1)
 #' y_test = 4*((z_test%*%alpha-1/sqrt(2))^2) + x_test%*%beta + sigma*matrix(rnorm(n),n,1)
 #'
 #' 
 #' # Obtain parameters in PLSiM using Profile Least Squares Estimator
-#' fit_plsimest = plsim.est(x,z,y)
+#' fit_plsimest = plsim.est(x, z, y)
 #' 
-#' preds_plsimest = plsim.pre(x_test,z_test,fit_plsimest)
+#' preds_plsimest = predict(fit_plsimest, x_test, z_test)
 #' 
 #' # Print the MSE of the Profile Least Squares Estimator method
 #' print( sum( (preds_plsimest-y_test)^2)/nrow(y_test) )
 #' 
 #' # Obtain parameters in PLSiM using Penalized Profile Least Squares Estimator
-#' fit_plsim = plsim.vs.soft(x,z,y,lambda = 0.01)
+#' fit_plsim = plsim.vs.soft(x, z, y,lambda = 0.01)
 #' 
-#' preds_plsim = plsim.pre(x_test,z_test,fit_plsim)
+#' preds_plsim = predict(fit_plsim, x_test, z_test)
 #' 
 #' # Print the MSE of the Penalized Profile Least Squares Estimator method
 #' print( sum( (preds_plsim-y_test)^2)/nrow(y_test) )
 #'
-plsim.pre = function(x_test=NULL, z_test, model)
+predict.pls <- function(object, x_test=NULL, z_test, ...)
 {
-  z_train = model$data$z
-  zeta = model$zeta
-  h = model$data$h
-  eta = model$eta
-  
+  z_train = object$data$z
+  zeta = object$zeta
+  h = object$data$h
+  eta = object$eta
   
   n_test = nrow(z_test)
   
@@ -108,17 +108,6 @@ plsim.pre = function(x_test=NULL, z_test, model)
     y_hat = x_test%*%beta + eta_test 
   }
   
-  #if(!is.null(y_test))
-  #{
-  #  mse = mean((y_test-y_hat)^2) 
-  #}
-  #else
-  #{
-  #  mse = NULL
-  #}
-  
-  #result = list(mse=mse,y_hat=y_hat)
-  
-  #return(result)
   return(y_hat)
+  
 }

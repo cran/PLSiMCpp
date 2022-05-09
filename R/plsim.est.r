@@ -1,4 +1,5 @@
 
+
 #' @name plsim.est
 #' @aliases plsim.est
 #' @aliases plsim.est.formula
@@ -79,6 +80,7 @@
 #' 
 #' fit = plsim.est(y~x|z1+z2)
 #' summary(fit)
+#' print(fit)
 #' 
 #' # EXAMPLE 2 (INTERFACE=DATA FRAME) 
 #' # To estimate parameters of partially linear single-index model (PLSiM).  
@@ -103,6 +105,7 @@
 #' 
 #' fit = plsim.est(xdat=X,zdat=Z,ydat=y)
 #' summary(fit)
+#' print(fit)
 #' 
 #' @references
 #'
@@ -112,10 +115,6 @@
 
 plsim.est = function(...)
 {
-  args = list(...)
-  if (is(args[[1]],"formula"))
-    UseMethod("plsim.est",args[[1]])
-  else
     UseMethod("plsim.est")
 }
 
@@ -125,7 +124,6 @@ plsim.est.formula = function(formula,data,...)
   m = match(c("formula","data"),
             names(mf), nomatch = 0) 
   mf = mf[c(1,m)]
-  
   mf.xf = mf
   
   mf[[1]] = as.name("model.frame")
@@ -134,7 +132,7 @@ plsim.est.formula = function(formula,data,...)
   chromoly = deal_formula(mf[["formula"]])
   
   if (length(chromoly) != 3)
-    stop("invoked with improper formula, please see plsim.est documentation for proper use")
+    stop("Invoked with improper formula, please see plsim.est documentation for proper use")
   
   bronze = lapply(chromoly, paste, collapse = " + ")
   
@@ -143,6 +141,7 @@ plsim.est.formula = function(formula,data,...)
   
   mf[["formula"]] = as.formula(paste(bronze[[1]]," ~ ", bronze[[3]]),
                                env = environment(formula))
+  
   
   formula.all = terms(as.formula(paste(" ~ ",bronze[[1]]," + ",bronze[[2]], " + ",bronze[[3]]),
                                  env = environment(formula)))
@@ -154,24 +153,8 @@ plsim.est.formula = function(formula,data,...)
   arguments.mfx = chromoly[[2]]
   arguments.mf = c(chromoly[[1]],chromoly[[3]])
   
-  
   mf[["formula"]] = terms(mf[["formula"]])
   mf.xf[["formula"]] = terms(mf.xf[["formula"]])
-  
-  if(all(orig.class == "ts")){
-    arguments = (as.list(attr(formula.all, "variables"))[-1])
-    attr(mf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mf,arguments)),drop = FALSE])
-    attr(mf.xf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mfx,arguments)),drop = FALSE])
-  }else if(any(orig.class == "ts")){
-    arguments = (as.list(attr(formula.all, "variables"))[-1])
-    arguments.normal = arguments[which(orig.class != "ts")]
-    arguments.timeseries = arguments[which(orig.class == "ts")]
-    
-    ix = sort(c(which(orig.class == "ts"),which(orig.class != "ts")),index.return = TRUE)$ix
-    attr(mf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mf,arguments)),drop = FALSE])
-    attr(mf.xf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mfx,arguments)),drop = FALSE])
-  }
-  
   
   mf = tryCatch({
     eval(mf,parent.frame())
@@ -179,27 +162,34 @@ plsim.est.formula = function(formula,data,...)
     NULL
   })
   
+  temp = map_lgl(mf , ~is.factor(.x))
+  if(sum(temp)>0){
+    stop("Categorical variables are not allowed in Z or Y")
+  }
+  
   mf.xf = tryCatch({
     eval(mf.xf,parent.frame())
   },error = function(e){
     NULL
   })
   
+  mt <- attr(mf.xf, "terms")
+  
   if(is.null(mf)){
-    cat( blue$bold("\n Z (")
-         %+% black$bold("z")
-         %+% blue$bold(") should not be NULL.\n")
-         %+% blue$bold(" If Z is null, please utilize linear models, such as ")
-         %+% black$bold("lm() ")
-         %+% blue$bold("function. \n\n")
-    )
-    return(NULL)
+    stop("Z should not be NULL")
   }
   else{
     ydat = model.response(mf)
   }
   
-  xdat = mf.xf
+  if(!is.null(mf.xf))
+  {
+    xdat = model.matrix(mt, mf.xf, NULL)
+    xdat = as.matrix(xdat[,2:dim(xdat)[2]])
+  }else{
+    xdat = mf.xf
+  }
+  
   zdat = mf[, chromoly[[3]], drop = FALSE]
   
   ydat = data.matrix(ydat)
@@ -218,15 +208,14 @@ plsim.est.formula = function(formula,data,...)
     zdat = zdat[,1]
   }
   
-  
   fit = plsim.est(xdat = xdat, zdat = zdat, ydat = ydat, ...)
   
   return(fit)
 }
 
 plsim.est.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, MaxStep = 200L,
-                            ParmaSelMethod="SimpleValidation",TestRatio=0.1,K = 3,
-                            seed=0,verbose=TRUE,...)
+                             ParmaSelMethod="SimpleValidation",TestRatio=0.1,K = 3,
+                             seed=0,verbose=TRUE, ...)
 {
   
   
@@ -235,7 +224,18 @@ plsim.est.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, MaxSte
   y = data$y
   z = data$z
   
-  if ( is.null( .assertion_for_variables(data)) ) return(NULL)
+  is.null( .assertion_for_variables(data))
+  
+  tempz = map_lgl(z , ~is.factor(.x))
+  tempy = map_lgl(y , ~is.factor(.x))
+  if((sum(tempz)>0)|(sum(tempy)>0)){
+    stop("Categorical variables are not allowed in Z or Y")
+  }
+  
+  if(!is.null(x)){
+    x = model.matrix(~., as.data.frame(x))
+    x = as.matrix(x[,2:dim(x)[2]])
+  }
   
   if(is.data.frame(x))
     x = data.matrix(x)
@@ -248,7 +248,7 @@ plsim.est.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, MaxSte
   
   if(is.null(zetaini))
   {
-    zetaini = plsim.ini(x,z,y,verbose=verbose)
+    zetaini = plsim.ini(y~x|z,verbose=verbose)
   }
   
   if(is.null(x))
@@ -271,20 +271,19 @@ plsim.est.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, MaxSte
   {
     hVec = h
     
-    res_plsimest_simple = plsim.bw(x,z,y,bandwidthList=hVec,
-                                        TargetMethod="plsimest",zeta_i=zetaini,
-                                        ParmaSelMethod=ParmaSelMethod,TestRatio=TestRatio,
-                                        K=K,seed=seed,verbose=verbose)
+    res_plsimest_simple = plsim.bw(y~x|z,bandwidthList=hVec,
+                                   TargetMethod="plsimest",zeta_i=zetaini,
+                                   ParmaSelMethod=ParmaSelMethod,TestRatio=TestRatio,
+                                   K=K,seed=seed,verbose=verbose)
     h = res_plsimest_simple$bandwidthBest       
   }
   else if(is.null(h))
   {
-    #hVec = c(0.01,0.02,0.05,0.1,0.5)
     
-    res_plsimest_simple = plsim.bw(x,z,y,
-                                        TargetMethod="plsimest",zeta_i=zetaini,
-                                        ParmaSelMethod=ParmaSelMethod,TestRatio=TestRatio,
-                                        K=K,seed=seed,verbose=verbose)
+    res_plsimest_simple = plsim.bw(y~x|z,
+                                   TargetMethod="plsimest",zeta_i=zetaini,
+                                   ParmaSelMethod=ParmaSelMethod,TestRatio=TestRatio,
+                                   K=K,seed=seed,verbose=verbose)
     h = res_plsimest_simple$bandwidthBest    
   }
   
@@ -301,7 +300,6 @@ plsim.est.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, MaxSte
     res = .plsimestCore(x, y, z, h, zetaini, MaxStep,flag)
   }
   
-  #res = list(x=x,y=y,z=z,h=h,zetaini=zetaini,MaxStep=MaxStep,flag=flag)
   
   data = list(x=x,y=y,z=z,h=h,
               zetaini=zetaini,MaxStep=MaxStep,
@@ -313,7 +311,7 @@ plsim.est.default = function(xdat=NULL, zdat, ydat, h=NULL, zetaini=NULL, MaxSte
              Z_alpha=z%*%matrix(res$zeta[1:ncol(z)]),
              r_square=.r_square(y,y_hat),mse=res$mse,
              variance=res$variance,stdzeta=res$stdzeta,
-             y_hat=y_hat)
+             y_hat=y_hat,call=match.call())
   
   class(fit) = "pls"
   

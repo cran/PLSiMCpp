@@ -114,4 +114,5 @@ X = data.frame(x)
 
 # Variable Selectioin Based on LASSO
 res_varSel_LASSO = plsim.vs.hard(xdat=X,zdat=Z,ydat=y,h=0.1,Method="LASSO")
+
 }

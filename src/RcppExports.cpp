@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // epan
 arma::mat epan(arma::mat t, double h0);
 RcppExport SEXP _PLSiMCpp_epan(SEXP tSEXP, SEXP h0SEXP) {

@@ -1,5 +1,3 @@
-
-
 deal_formula = function(formula){
   tf <- as.character(formula)  
   tf <- tf[length(tf)]
@@ -20,42 +18,25 @@ deal_formula = function(formula){
 {
   if( is.null(data$y) )
   {
-    cat( blue$bold("\n Y (")
-         %+% black$bold("y")
-         %+% blue$bold(") should not be NULL.\n\n") )
-    
-    return(NULL)
+    stop("Y should not be NULL")
   }
   
-  if( (!is.matrix(data$y))&(!is.data.frame(data$x)) )
+  if( (!is.matrix(data$y))&(!is.data.frame(data$y)) )
   {
-    cat( blue$bold("\n Y (")
-         %+% black$bold("y")
-         %+% blue$bold(") should be a matrix or dataframe.\n\n") )  
-    return(NULL)
+    stop("Y should be a matrix or dataframe")
   }
   
   
   
   if( is.null(data$z) )
   {
-    cat( blue$bold("\n Z (")
-         %+% black$bold("z")
-         %+% blue$bold(") should not be NULL.\n")
-         %+% blue$bold(" If Z is null, please utilize linear models, such as ")
-         %+% black$bold("lm() ")
-         %+% blue$bold("function. \n\n")
-    )
-    
-    return(NULL)
+    stop("Z should not be NULL. If Z is NULL, please utilize linear models,
+         such as lm() function")
   }
   
   if((!is.matrix(data$z))&(!is.data.frame(data$z)))
   {
-    cat( blue$bold("\n Z (")
-         %+% black$bold("z")
-         %+% blue$bold(") should be a matrix or dataframe.\n\n") )    
-    return(NULL)
+    stop("Z should be a matrix or dataframe")
   }  
   
   
@@ -63,44 +44,24 @@ deal_formula = function(formula){
   {
     if( (!is.matrix(data$x))&(!is.data.frame(data$x)) )
     {
-      cat( blue$bold("\n X (")
-           %+% black$bold("x")
-           %+% blue$bold(") should be a matrix or dataframe.\n\n") )    
-      return(NULL)
+      stop("X should be a matrix or dataframe")
     }
   }
   
   
   if( !is.null(data$x) )
   {
-    if(   length(data$y) !=  nrow(data$x) 
-          #& nrow(data$x) > 1
-    )
+    if(nrow(data$y) !=  nrow(data$x) )
     {
-      cat( blue$bold("\n The sample size of Y (")
-           %+% black$bold("data$y")
-           %+% blue$bold(") is not equal to that of X (")
-           %+% black$bold("data$x")
-           %+% blue$bold("). \n\n")
-      )
-      
-      return(NULL)
+      stop("The sample size of Y is not equal to that of X")
     }
   }
   
   
-  if( length(data$y) !=  nrow(data$z) )
+  if( nrow(data$y) !=  nrow(data$z) )
   {
-    cat( blue$bold("\n The sample size of Y (")
-         %+% black$bold("data$y")
-         %+% blue$bold(") is not equal to that of Z (")
-         %+% black$bold("data$z")
-         %+% blue$bold("). \n\n")
-    )
-    
-    return(NULL)
+    stop("The sample size of Y is not equal to that of Z")
   }
-  
   
   return(TRUE)
   
@@ -116,3 +77,4 @@ deal_formula = function(formula){
   
   return(rs)
 }
+

@@ -91,19 +91,15 @@
 #'
 plsim.ini = function(...)
 {
-  args = list(...)
-  if (is(args[[1]],"formula"))
-    UseMethod("plsim.ini",args[[1]])
-  else
     UseMethod("plsim.ini")
 }
 
 plsim.ini.formula = function(formula,data,...)
 {
   mf = match.call(expand.dots = FALSE)   
-  m = match(c("formula","data"), names(mf), nomatch = 0) 
+  m = match(c("formula","data"),
+            names(mf), nomatch = 0) 
   mf = mf[c(1,m)]
-  
   mf.xf = mf
   
   mf[[1]] = as.name("model.frame")
@@ -112,7 +108,7 @@ plsim.ini.formula = function(formula,data,...)
   chromoly = deal_formula(mf[["formula"]])
   
   if (length(chromoly) != 3)
-    stop("invoked with improper formula, please see plsim.ini documentation for proper use")
+    stop("Invoked with improper formula, please see plsim.est documentation for proper use")
   
   bronze = lapply(chromoly, paste, collapse = " + ")
   
@@ -121,6 +117,7 @@ plsim.ini.formula = function(formula,data,...)
   
   mf[["formula"]] = as.formula(paste(bronze[[1]]," ~ ", bronze[[3]]),
                                env = environment(formula))
+  
   
   formula.all = terms(as.formula(paste(" ~ ",bronze[[1]]," + ",bronze[[2]], " + ",bronze[[3]]),
                                  env = environment(formula)))
@@ -132,24 +129,8 @@ plsim.ini.formula = function(formula,data,...)
   arguments.mfx = chromoly[[2]]
   arguments.mf = c(chromoly[[1]],chromoly[[3]])
   
-  
   mf[["formula"]] = terms(mf[["formula"]])
   mf.xf[["formula"]] = terms(mf.xf[["formula"]])
-  
-  if(all(orig.class == "ts")){
-    arguments = (as.list(attr(formula.all, "variables"))[-1])
-    attr(mf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mf,arguments)),drop = FALSE])
-    attr(mf.xf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mfx,arguments)),drop = FALSE])
-  }else if(any(orig.class == "ts")){
-    arguments = (as.list(attr(formula.all, "variables"))[-1])
-    arguments.normal = arguments[which(orig.class != "ts")]
-    arguments.timeseries = arguments[which(orig.class == "ts")]
-    
-    ix = sort(c(which(orig.class == "ts"),which(orig.class != "ts")),index.return = TRUE)$ix
-    attr(mf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mf,arguments)),drop = FALSE])
-    attr(mf.xf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mfx,arguments)),drop = FALSE])
-  }
-  
   
   mf = tryCatch({
     eval(mf,parent.frame())
@@ -157,27 +138,34 @@ plsim.ini.formula = function(formula,data,...)
     NULL
   })
   
+  temp = map_lgl(mf , ~is.factor(.x))
+  if(sum(temp)>0){
+    stop("Categorical variables are not allowed in Z or Y")
+  }
+  
   mf.xf = tryCatch({
     eval(mf.xf,parent.frame())
   },error = function(e){
     NULL
   })
   
+  mt <- attr(mf.xf, "terms")
+  
   if(is.null(mf)){
-    cat( blue$bold("\n Z (")
-         %+% black$bold("z")
-         %+% blue$bold(") should not be NULL.\n")
-         %+% blue$bold(" If Z is null, please utilize linear models, such as ")
-         %+% black$bold("lm() ")
-         %+% blue$bold("function. \n\n")
-    )
-    return(NULL)
+    stop("Z should not be NULL")
   }
   else{
     ydat = model.response(mf)
   }
   
-  xdat = mf.xf
+  if(!is.null(mf.xf))
+  {
+    xdat = model.matrix(mt, mf.xf, NULL)
+    xdat = as.matrix(xdat[,2:dim(xdat)[2]])
+  }else{
+    xdat = mf.xf
+  }
+  
   zdat = mf[, chromoly[[3]], drop = FALSE]
   
   ydat = data.matrix(ydat)
@@ -207,19 +195,28 @@ plsim.ini.default = function(xdat, zdat, ydat,
 {
   if(verbose)
   {
-    cat( blue$bold('\n Utilize the ')
-         %+% black$bold('MAVE_ini')
-         %+% blue$bold(' method to initialize coefficients.\n') )    
+    cat('\n Utilize the MAVE_ini method to initialize coefficients\n')
   }
   
-  data = list(x=xdat, y=ydat, z=zdat)
-  
-  if ( is.null( .assertion_for_variables(data)) ) return(NULL)
+  data = list(x=xdat,y=ydat,z=zdat)
+  is.null( .assertion_for_variables(data))
   class(data) = Method
   
   x = data$z
   z = data$x
   y = data$y
+  
+  tempz = map_lgl(x , ~is.factor(.x))
+  tempy = map_lgl(y , ~is.factor(.x))
+  
+  if((sum(tempz)>0)|(sum(tempy)>0)){
+    stop("Categorical variables are not allowed in Z or Y")
+  }
+  
+  if(!is.null(z)){
+    z = model.matrix(~., as.data.frame(z))
+    z = as.matrix(z[,2:dim(z)[2]])
+  }
   
   if(is.data.frame(x))
     x = data.matrix(x)
@@ -254,11 +251,6 @@ plsim.ini.default = function(xdat, zdat, ydat,
   a = matrix(0,n,1)
   h2 = 2*n^(-2/(dx+4))
   
-  if( !is.null(z) )
-  {
-    invzz = solve(t(z)%*%z)%*%t(z)
-  }
-  
   eyep1 = diag(c(matrix(1,dx+1,1)))/n^2
   
   
@@ -269,7 +261,8 @@ plsim.ini.default = function(xdat, zdat, ydat,
     
     if( !is.null(z) )
     {
-      beta = invzz %*% ye
+      fit = lm(ye~z-1)
+      beta = as.matrix(fit$coefficients)
       ye = ye - z%*%beta
     }
     
@@ -318,84 +311,4 @@ plsim.ini.default = function(xdat, zdat, ydat,
   
   return(zeta_i)
 }
-#
-# plsim.ini.dbe=function(data)
-# {
-#   cat("Utilize the difference based method to initialize coeffiecnts.\n")
-#
-#   if ( is.null( .assertion_for_variables(data)) ) return(NULL)
-#
-#   x = data$x
-#   z = data$z
-#   y = data$y
-#
-#
-#   n = nrow(z)
-#   dz = ncol(z)
-#
-#   if( !is.null(x) )
-#   {
-#     dx = ncol(x)
-#   }
-#   else
-#   {
-#     dx = 0
-#   }
-#
-#
-#
-#   yd = matrix(0,n,1)
-#   zd = matrix(0,n,dz)
-#
-#   if( !is.null(x) )
-#   {
-#     xd = matrix(0,n,dx)
-#   }
-#
-#   eyep1 = diag(c(matrix(1,dx+dz+1,1)))/n^2
-#
-#
-#   for(k in 1:n)
-#   {
-#     zk = matrix(z[k,])
-#     d = colSums((t(z) - zk%*%matrix(1,1,n))^2)
-#     d[k] = max(d)
-#     idx = which.min(d)
-#
-#     yd[k] = y[k] - y[idx]
-#     zd[k,] = z[k,] - z[idx,]
-#
-#     if( !is.null(x) )
-#     {
-#       xd[k,] = x[k,] - x[idx,]
-#     }
-#
-#   }
-#
-#   if( is.null(x) )
-#   {
-#     u = cbind(matrix(1,n,1),zd)
-#   }
-#   else
-#   {
-#     u = cbind(matrix(1,n,1),zd,xd)
-#   }
-#
-#
-#   b = solve(t(u)%*%u+eyep1)%*%t(u)%*%yd
-#   alpha = matrix(b[2:(dz+1)])
-#   alpha_i = alpha/norm(alpha,"2")*sign(alpha[1])
-#
-#   if( !is.null(x) )
-#   {
-#     beta_i = matrix(b[(dz+2):(dx+dz+1)])
-#     zeta_i = cbind(t(matrix(alpha_i)),t(matrix(beta_i)))
-#   }
-#   else
-#   {
-#     zeta_i = t(matrix(alpha_i))
-#   }
-#
-#
-#   return(zeta_i)
-# }
+

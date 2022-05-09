@@ -10,12 +10,13 @@
 #' 
 #' 
 #' @param fit the result of function \link{plsim.est} or \link{plsim.vs.soft}.
-#' @param significant_level significant level for the test, default: 0.05. 
 #' 
 #' @return
-#' \item{T2}{test statistic.}
-#' \item{pvalue}{p-value.}
-#' \item{\eqn{delta}}{ \eqn{delta=1} means to reject the hypothesis \eqn{H_0}, while \eqn{\delta=0} means to accept the hypothesis \eqn{H_0}. }
+#' A list with class "htest" containing the following components
+#' \item{statistic}{the value of the test statistic.}
+#' \item{p.value}{the p-value for the test}
+#' \item{method}{a character string indicating what type of test was performed}
+#' \item{data.name}{a character string giving the name of input}
 #' 
 #' @export
 #' 
@@ -52,7 +53,7 @@
 #' Annals of statistics, 2010, 38(6): 3811.
 #' 
 
-plsim.npTest=function(fit,significant_level=0.05)
+plsim.npTest = function(fit)
 {
   data = fit$data
 
@@ -95,15 +96,11 @@ plsim.npTest=function(fit,significant_level=0.05)
   T2 = rK/2*n*(RSS_H0-RSS_H1)/RSS_H1
 
   pvalue = pchisq(T2,df=dfn,lower.tail=F)
-  
-  if(pvalue<significant_level)
-  {
-    h = 1
-  }
-  else
-  {
-    h = 0
-  }  
 
-  return(list(T2=T2,pvalue=pvalue,delta=h))
+  DNAME <- deparse(substitute(fit))
+  METHOD <- "Test for nonparametric component"
+  names(T2) <- "statistics"
+  res <- list(statistic = T2, method = METHOD, p.value = pvalue, data.name=DNAME)
+  class(res) <- "htest"
+  return(res)
 }

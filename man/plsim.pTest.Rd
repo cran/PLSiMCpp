@@ -4,27 +4,22 @@
 \alias{plsim.pTest}
 \title{Testing Parametric Components}
 \usage{
-plsim.pTest(
-  fit,
-  significant_level = 0.05,
-  parameterSelected = NULL,
-  TargetMethod = "plsimest"
-)
+plsim.pTest(fit, parameterSelected = NULL, TargetMethod = "plsimest")
 }
 \arguments{
 \item{fit}{the result of function \link{plsim.est} or \link{plsim.vs.soft}.}
-
-\item{significant_level}{significant level for the test, default: 0.05.}
 
 \item{parameterSelected}{select some coefficients for testing, default: NULL.}
 
 \item{TargetMethod}{default: "plsim.est".}
 }
 \value{
-\item{T1}{test statistic.}
-\item{pvalue}{p-value.}
-\item{m}{degree of freedom of Chi-squared distribution.}
-\item{delta}{ \eqn{delta=1} means to reject the hypothesis \eqn{H_0}, while \eqn{delta=0} means to accept the hypothesis \eqn{H_0}. }
+A list with class "htest" containing the following components
+\item{statistic}{the value of the test statistic.}
+\item{parameter}{the degree of freedom for the test}
+\item{p.value}{the p-value for the test}
+\item{method}{a character string indicating what type of test was performed}
+\item{data.name}{a character string giving the name of input}
 }
 \description{
 Test whether some elements of \eqn{\alpha} and \eqn{\beta} are zero, that is,

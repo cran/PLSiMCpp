@@ -115,14 +115,8 @@
 #' res_plsim_simple = plsim.bw(xdat=X,zdat=Z,ydat=y,bandwidthList=c(0.02,0.04,0.06,0.08,0.10),
 #'                          ParmaSelMethod="SimpleValidation",TargetMethod="plsim",lambda=0.01)
 #'                                  
-
-
 plsim.bw = function(...)
 {
-  args = list(...)
-  if (is(args[[1]],"formula"))
-    UseMethod("plsim.bw",args[[1]])
-  else
     UseMethod("plsim.bw")
 }
 
@@ -132,7 +126,6 @@ plsim.bw.formula = function(formula,data,...)
   m = match(c("formula","data"),
             names(mf), nomatch = 0) 
   mf = mf[c(1,m)]
-  
   mf.xf = mf
   
   mf[[1]] = as.name("model.frame")
@@ -141,7 +134,7 @@ plsim.bw.formula = function(formula,data,...)
   chromoly = deal_formula(mf[["formula"]])
   
   if (length(chromoly) != 3)
-    stop("invoked with improper formula, please see plsim.bw documentation for proper use")
+    stop("Invoked with improper formula, please see plsim.est documentation for proper use")
   
   bronze = lapply(chromoly, paste, collapse = " + ")
   
@@ -150,6 +143,7 @@ plsim.bw.formula = function(formula,data,...)
   
   mf[["formula"]] = as.formula(paste(bronze[[1]]," ~ ", bronze[[3]]),
                                env = environment(formula))
+  
   
   formula.all = terms(as.formula(paste(" ~ ",bronze[[1]]," + ",bronze[[2]], " + ",bronze[[3]]),
                                  env = environment(formula)))
@@ -161,24 +155,8 @@ plsim.bw.formula = function(formula,data,...)
   arguments.mfx = chromoly[[2]]
   arguments.mf = c(chromoly[[1]],chromoly[[3]])
   
-  
   mf[["formula"]] = terms(mf[["formula"]])
   mf.xf[["formula"]] = terms(mf.xf[["formula"]])
-  
-  if(all(orig.class == "ts")){
-    arguments = (as.list(attr(formula.all, "variables"))[-1])
-    attr(mf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mf,arguments)),drop = FALSE])
-    attr(mf.xf[["formula"]], "predvars") = bquote(.(as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments)))))[,.(match(arguments.mfx,arguments)),drop = FALSE])
-  }else if(any(orig.class == "ts")){
-    arguments = (as.list(attr(formula.all, "variables"))[-1])
-    arguments.normal = arguments[which(orig.class != "ts")]
-    arguments.timeseries = arguments[which(orig.class == "ts")]
-    
-    ix = sort(c(which(orig.class == "ts"),which(orig.class != "ts")),index.return = TRUE)$ix
-    attr(mf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mf,arguments)),drop = FALSE])
-    attr(mf.xf[["formula"]], "predvars") = bquote((.(as.call(c(quote(cbind),as.call(c(quote(as.data.frame),as.call(c(quote(ts.intersect), arguments.timeseries)))),arguments.normal,check.rows = TRUE)))[,.(ix)])[,.(match(arguments.mfx,arguments)),drop = FALSE])
-  }
-  
   
   mf = tryCatch({
     eval(mf,parent.frame())
@@ -186,27 +164,34 @@ plsim.bw.formula = function(formula,data,...)
     NULL
   })
   
+  temp = map_lgl(mf , ~is.factor(.x))
+  if(sum(temp)>0){
+    stop("Categorical variables are not allowed in Z or Y")
+  }
+  
   mf.xf = tryCatch({
     eval(mf.xf,parent.frame())
   },error = function(e){
     NULL
   })
   
+  mt <- attr(mf.xf, "terms")
+  
   if(is.null(mf)){
-    cat( blue$bold("\n Z (")
-         %+% black$bold("z")
-         %+% blue$bold(") should not be NULL.\n")
-         %+% blue$bold(" If Z is null, please utilize linear models, such as ")
-         %+% black$bold("lm() ")
-         %+% blue$bold("function. \n\n")
-    )
-    return(NULL)
+    stop("Z should not be NULL")
   }
   else{
     ydat = model.response(mf)
   }
   
-  xdat = mf.xf
+  if(!is.null(mf.xf))
+  {
+    xdat = model.matrix(mt, mf.xf, NULL)
+    xdat = as.matrix(xdat[,2:dim(xdat)[2]])
+  }else{
+    xdat = mf.xf
+  }
+  
   zdat = mf[, chromoly[[3]], drop = FALSE]
   
   ydat = data.matrix(ydat)
@@ -240,7 +225,18 @@ plsim.bw.default = function(xdat,zdat,ydat,zeta_i=NULL,bandwidthList=NULL,ParmaS
   y = data$y
   z = data$z
   
-  if ( is.null( .assertion_for_variables(data)) ) return(NULL)
+  .assertion_for_variables(data)
+  
+  tempz = map_lgl(z , ~is.factor(.x))
+  tempy = map_lgl(y , ~is.factor(.x))
+  if((sum(tempz)>0)|(sum(tempy)>0)){
+    stop("Categorical variables are not allowed in Z or Y")
+  }
+  
+  if(!is.null(x)){
+    x = model.matrix(~., as.data.frame(x))
+    x = as.matrix(x[,2:dim(x)[2]])
+  }
   
   if(is.data.frame(x))
     x = data.matrix(x)
@@ -282,17 +278,12 @@ bwsel_Core=function(data,K,bandwidthList,Method,zeta_i,
 
 
 bwsel_new.default=function(data,K,bandwidthList,Method,zeta_i,
-                                   lambda, l1_ratio,VarSelMethod,MaxStep,verbose,TestRatio,seed
-)
+                                   lambda, l1_ratio,VarSelMethod,MaxStep,verbose,TestRatio,seed)
 {
-  #cat( blue$bold("\n Simple Validation for Bandwidth Selection \n \n") )
   
   if(verbose)
   {
-    cat( black$bold('\n Simple Validation ')
-         %+% blue$bold('for Bandwidth Selection for ')
-         %+% black$bold(Method) )  
-    cat('\n\n')    
+    cat(paste('\n Simple Validation for Bandwidth Selection for ',Method,'\n',sep=""))  
   }
   
   
@@ -364,10 +355,7 @@ bwsel_new.default=function(data,K,bandwidthList,Method,zeta_i,
     {
       if( is.null(lambda) )
       {
-        
-        cat( blue$bold("\n lambda should not be NULL for plsim \n \n") )
-        
-        return(NULL)
+        stop("Lambda should not be NULL for plsim")
       }
       
       res = plsim.vs.soft(x_train,z_train,y_train,bandwidthList[j],zeta_i,lambda,
@@ -381,7 +369,7 @@ bwsel_new.default=function(data,K,bandwidthList,Method,zeta_i,
     zeta = res$zeta
     eta = res$eta
     
-    pred_res = plsim.pre(x_test,z_test,res)
+    pred_res = predict(res, x_test, z_test)
     mse[j] = mean((y_test-pred_res)^2)
     
   }
@@ -401,13 +389,10 @@ bwsel_new.CrossValidation=function(data,K,bandwidthList,Method,zeta_i,
                                            lambda, l1_ratio,VarSelMethod,MaxStep,
                                            verbose,TestRatio,seed)
 {
-  #cat( blue$bold("\n Cross Validation for Bandwidth Selection \n \n") )
   
   if(verbose)
   {
-    cat( black$bold('\n Cross Validation ')
-         %+% blue$bold('for Bandwidth Selection for ')
-         %+% black$bold(Method) )  
+    cat(paste('\n Cross Validation for Bandwidth Selection for ', Method, sep=""))  
     cat('\n\n')    
   }
   
@@ -491,26 +476,20 @@ bwsel_new.CrossValidation=function(data,K,bandwidthList,Method,zeta_i,
       {
         if( is.null(lambda) )
         {
-          
-          cat( blue$bold("\n lambda should not be NULL for plsim \n \n") )
-          
-          return(NULL)
+          stop("Lambda should not be NULL for plsim")
         }
         
         res = plsim.vs.soft(x_train,z_train,y_train,bandwidthList[j],zeta_i,lambda,
                     l1_ratio,MaxStep,VarSelMethod,verbose)
       }
-      #break
-      
+
       zeta = res$zeta
       eta = res$eta
       
-      pred_res = plsim.pre(x_test,z_test,res)
+      pred_res = predict(res, x_test, z_test)
       mseTmp[i] = mean((y_test-pred_res)^2)
       
     }
-    
-    #break
     
     mse[j] = mean(mseTmp)
   }
