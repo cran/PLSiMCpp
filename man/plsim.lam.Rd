@@ -29,8 +29,8 @@ lambdaList=NULL, l1_ratio_List=NULL, lambda_selector="BIC", verbose=TRUE, seed=0
 \item{h}{bandwidth.}
 
 \item{zetaini}{initial coefficients, optional (default: NULL). It could be obtained by the function \code{\link{plsim.ini}}.
-\code{zetaini[1:ncol(z)]} is the initial coefficient vector \eqn{\boldmath{\alpha}_0},
-and \code{zetaini[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\boldmath{\beta}_0}.}
+\code{zetaini[1:ncol(z)]} is the initial coefficient vector \eqn{\alpha_0},
+and \code{zetaini[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\beta_0}.}
 
 \item{penalty}{string, optional (default="SCAD"). It could be "SCAD", "LASSO" or "ElasticNet".}
 

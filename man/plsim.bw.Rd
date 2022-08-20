@@ -47,8 +47,8 @@ and Simple Validation ("SimpleValidation").}
 \item{TestRatio}{double, optional (default: 0.1). The ratio of test data for Simple Validation.}
 
 \item{zeta_i}{initial coefficients. It could be obtained by the function \code{\link{plsim.ini}}.
-\code{zeta_i[1:ncol(z)]} is the initial coefficient vector \eqn{\boldmath{\alpha}_0}, 
-and \code{zeta_i[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\boldmath{\beta}_0}.}
+\code{zeta_i[1:ncol(z)]} is the initial coefficient vector \eqn{\alpha_0}, 
+and \code{zeta_i[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\beta_0}.}
 
 \item{lambda}{the parameter for the function \link{plsim.vs.soft}, default: NULL.}
 

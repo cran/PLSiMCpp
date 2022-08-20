@@ -25,8 +25,8 @@
 #' @param h a value or a vector for bandwidth. If \code{h} is NULL, a default vector c(0.01,0.02,0.05,0.1,0.5)
 #' will be set for it. \link{plsim.bw} is employed to select the optimal bandwidth when h is a vector or NULL.
 #' @param zetaini initial coefficients, optional (default: NULL). It could be obtained by the function \code{\link{plsim.ini}}.
-#' \code{zetaini[1:ncol(z)]} is the initial coefficient vector \eqn{\boldmath{\alpha}_0},
-#' and \code{zetaini[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\boldmath{\beta}_0}.
+#' \code{zetaini[1:ncol(z)]} is the initial coefficient vector \eqn{\alpha_0},
+#' and \code{zetaini[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\beta_0}.
 #' @param MaxStep the maximum iterations, optional (default=200).
 #' @param ParmaSelMethod the parameter for the function \link{plsim.bw}.
 #' @param TestRatio the parameter for the function \link{plsim.bw}.
@@ -36,7 +36,7 @@
 #' @param \dots additional arguments.
 #'
 #' @return
-#' \item{eta}{estimated non-parametric part \eqn{\hat{\eta}(Z^T\boldmath{\hat{\alpha} })}.}
+#' \item{eta}{estimated non-parametric part \eqn{\hat{\eta}(Z^T{\hat{\alpha} })}.}
 #' \item{zeta}{estimated coefficients. \code{zeta[1:ncol(z)]} is \eqn{\hat{\alpha}}, 
 #' and \code{zeta[(ncol(z)+1):(ncol(z)+ncol(x))]} is \eqn{\hat{\beta}}.}
 #' \item{y_hat}{ \code{y}'s estimates.}
@@ -44,7 +44,7 @@
 #' \item{data}{data information including \code{x}, \code{z}, \code{y}, bandwidth \code{h}, 
 #' initial coefficients \code{zetaini}, iteration step \code{MaxStep} and flag \code{SiMflag}. 
 #' \code{SiMflag} is TRUE when \code{x} is NULL, otherwise \code{SiMflag} is FALSE.}
-#' \item{Z_alpha}{\eqn{Z^T\boldmath{\hat{\alpha}}}.}
+#' \item{Z_alpha}{\eqn{Z^T{\hat{\alpha}}}.}
 #' \item{r_square}{multiple correlation coefficient.}
 #' \item{variance}{variance of \code{y_hat}.}
 #' \item{stdzeta}{standard error of \code{zeta}.}

@@ -36,8 +36,8 @@ Method="SCAD", verbose=TRUE, ParmaSelMethod="SimpleValidation", seed=0, \dots)
 will be set for it. \link{plsim.bw} is employed to select the optimal bandwidth when h is a vector or NULL.}
 
 \item{zeta_i}{initial coefficients, optional (default: NULL). It could be obtained by the function \code{\link{plsim.ini}}.
-\code{zeta_i[1:ncol(z)]} is the initial coefficient vector \eqn{\boldmath{\alpha}_0},
-and \code{zeta_i[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\boldmath{\beta}_0}.}
+\code{zeta_i[1:ncol(z)]} is the initial coefficient vector \eqn{\alpha_0},
+and \code{zeta_i[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\beta_0}.}
 
 \item{verbose}{bool, default: TRUE. Enable verbose output.}
 

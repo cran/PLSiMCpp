@@ -49,8 +49,8 @@
 #' @param ydat input vector (response variable).
 #' @param h bandwidth.
 #' @param zetaini initial coefficients, optional (default: NULL). It could be obtained by the function \code{\link{plsim.ini}}.
-#' \code{zetaini[1:ncol(z)]} is the initial coefficient vector \eqn{\boldmath{\alpha}_0},
-#' and \code{zetaini[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\boldmath{\beta}_0}.
+#' \code{zetaini[1:ncol(z)]} is the initial coefficient vector \eqn{\alpha_0},
+#' and \code{zetaini[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial coefficient vector \eqn{\beta_0}.
 #' @param penalty string, optional (default="SCAD"). It could be "SCAD", "LASSO" or "ElasticNet".
 #' @param lambdaList candidates for lambda selection. \code{lambda} is a constant that multiplies the penalty term. 
 #' If \code{lambdaList} is NULL, function \link{plsim.lam} will automatically set it.

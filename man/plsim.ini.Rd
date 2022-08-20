@@ -31,8 +31,8 @@ plsim.ini(\dots)
 }
 \value{
 \item{zeta_i}{initial coefficients. \code{zeta_i[1:ncol(z)]} is the initial coefficient vector 
-\eqn{\boldmath{\alpha}_0}, and \code{zeta_i[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial 
-coefficient vector \eqn{\boldmath{\beta}_0}.}
+\eqn{\alpha_0}, and \code{zeta_i[(ncol(z)+1):(ncol(z)+ncol(x))]} is the initial 
+coefficient vector \eqn{\beta_0}.}
 }
 \description{
 Xia \emph{et al.}'s MAVE method is used to obtain initialized 
