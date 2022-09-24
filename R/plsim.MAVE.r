@@ -5,8 +5,6 @@
 #' @aliases plsim.MAVE.default
 #' 
 #' @title Minimum Average Variance Estimation
-#'
-#'
 #' @description MAVE (Minimum Average Variance Estimation), proposed by Xia \emph{et al.} (2006)
 #' to estimate parameters in PLSiM
 #' \deqn{Y=\eta(Z^T\alpha)+X^T\beta+\epsilon.}

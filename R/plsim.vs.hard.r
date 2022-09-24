@@ -205,7 +205,7 @@ plsim.vs.hard.default = function(xdat=NULL,zdat,ydat,h=NULL,zeta_i=NULL,lambdaLi
                           l1RatioList=NULL,lambda_selector="BIC",threshold=0.05,
                           Method="SCAD",verbose=TRUE,ParmaSelMethod="SimpleValidation",seed=0,...)
 {
-  n = nrow(y)
+  n = nrow(ydat)
   
   data = list(x=xdat,y=ydat,z=zdat)
   x = data$x
